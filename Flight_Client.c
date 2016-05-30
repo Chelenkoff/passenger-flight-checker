@@ -1,31 +1,20 @@
 /*
     C ECHO client example using sockets
 */
-#include<stdio.h> 		//printf
-#include<string.h> 		//strlen
-#include<sys/socket.h>  //socket
-#include<arpa/inet.h> 	//inet_addr
-#include<unistd.h> 		//read/write
-
-#define ERROR_STATE -1 
-
-//Communication message struct
-typedef struct
-{
-    int id;
-    int select;
-    char message[100];
-} Message;
-Message msg={0,0};
+#include<stdio.h> //printf
+#include<string.h>    //strlen
+#include<sys/socket.h>    //socket
+#include<arpa/inet.h> //inet_addr
 
 int main(int argc , char *argv[])
 {
     int sock;
     struct sockaddr_in server;
+    char message[1000] , server_reply[2000];
 
     //Create socket
     sock = socket(AF_INET , SOCK_STREAM , 0);
-    if (sock == ERROR_STATE)
+    if (sock == -1)
     {
         printf("Could not create socket");
     }
@@ -38,55 +27,41 @@ int main(int argc , char *argv[])
     //Connect to remote server
     if (connect(sock , (struct sockaddr *)&server , sizeof(server)) < 0)
     {
-        perror("Connection failed. Error ");
-        return ERROR_STATE;
+        perror("connect failed. Error");
+        return 1;
     }
 
     puts("Connected\n");
 
-    //Keep communicating with server until given an exit signal
-    int signalExit = 0;
-    while(!signalExit)
+    //keep communicating with server
+    while(1)
     {
-        printf("\nChoose an option:\n");
-    	printf("---------------------\n");
-		printf("0. Exit\n");
-    	printf("1. Search Passanger by id\n");
-    	printf("Your choice: ");
-    	scanf("%d", &msg.select);
 
-		switch(msg.select)
-		{
-			case 0:
-				printf("Exiting...\n");
-				signalExit = 1;
-				break;
-			case 1:
-				printf("You have choosen to search passenger by ID.\n Enter passengers ID:");
-				scanf("%d", &msg.id);
+    	//Initialize server_replay to 0
+    	(void) memset((char*) &server_reply, 0, sizeof(server_reply));
+    	//Send some data
+        if( send(sock , message , 1000 , 0) < 0)
+        {
+            puts("Send failed");
+            return 1;
+        }
 
-				int send;
-				send = write(sock, &msg, sizeof(Message));
-				if(send <= 0)
-				{
-					puts("Unable to send command to server");
-				}
-  		
-				//Reinititalize message struct
-				msg.id = 0;
-				msg.select = 0;
-				memset(msg.message, 0, sizeof msg.message);
+        //Receive a reply from the server
+        if( recv(sock , server_reply , 2000 , 0) < 0)
+        {
+            puts("recv failed");
+            break;
+        }
 
-				int read_size;
-				if(read_size = read(sock , &msg , sizeof(Message)) > 0)
-				{
-					printf("\n%s",msg.message);
-				}
-				break;
-			default:
-				printf("Invalid selection, please make another choice! \n");
-				break;
-		}
+        	puts("Server reply :");
+        	puts(server_reply);
+
+
+
+
+        printf("Enter message : ");
+        fgets(message, 1000, stdin);
+
     }
 
     close(sock);
